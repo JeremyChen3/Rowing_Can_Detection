@@ -1,58 +1,58 @@
 import cv2 as cv
 import numpy as np
-import sys
 
-# Main Algorithm
 def apply_processing(frame):
-	src = cv.IMREAD_COLOR(frame)
+    src = frame  # FIX: frame is already an image (numpy array)
 
-	# Preprocess for HoughCircles
-	gray = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
-	gray = cv.GaussianBlur(gray, (9, 9), 2)
+    gray = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
+    gray = cv.GaussianBlur(gray, (9, 9), 2)
 
-	rows = gray.shape[0]
-	min_radius = int(rows * 0.25)
-	max_radius = int(rows * 0.60)
+    rows = gray.shape[0]
+    min_radius = int(rows * 0.25)
+    max_radius = int(rows * 0.60)
 
-	# Circle Detection
-	circles = cv.HoughCircles(
-	gray,
+    circles = cv.HoughCircles(
+        gray,
         cv.HOUGH_GRADIENT,
-        dp = 1,
-	minDist = rows,
-
-	# Canny Threshold
-	param1=120,  
+        dp=1,
+        minDist=rows,
+        param1=120,
         param2=40,
         minRadius=min_radius,
         maxRadius=max_radius
-	)
-	
-	# Convert datas collected to nearest integer
-	circles = np.round(circles[0]).astype(int)
+    )
 
-	# Choose the largest circle
-	x, y, r = max(circles, key=lambda c: c[2])
-	center = (x, y)
-	output = src.copy()
-	cv.circle(output, center, r, (0, 255, 67), 7)
-	cv.circle(output, center, 4, (0, 255, 67), 5)
-	return output	
+    output = src.copy()
+
+    if circles is not None:
+        circles = np.round(circles[0]).astype(int)
+        x, y, r = max(circles, key=lambda c: c[2])
+        center = (x, y)
+        cv.circle(output, center, r, (0, 255, 67), 7)
+        cv.circle(output, center, 4, (0, 255, 67), 5)
+
+    return output
 
 def read_and_process_video(video_path):
-	video_path = 'rowing_can.mp4' 
-	cap = cv.VideoCapture(video_path)
-	if cap.isOpened() == False:
-		print("Error: Could not open video source")
-		exit()
-	
-	while cap.isOpened():
-		ret, frame = cap.read()
-		if ret:
-        		cv.imshow("Frame Window", frame)
-        		cv.waitKey(0)
-	
-	cap.release()
-	cv.destryAllWIndows()
+    cap = cv.VideoCapture(video_path)  # FIX: use the argument
+    if not cap.isOpened():
+        print("Error: Could not open video source:", video_path)
+        return
 
-read_and_process_video('rowing_can.mp4')
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break  # FIX: stop at end of video
+
+        processed = apply_processing(frame)
+
+        cv.imshow("Frame Window", processed)
+
+        # ESC to quit
+        if cv.waitKey(30) & 0xFF == 27:
+            break
+
+    cap.release()
+    cv.destroyAllWindows()
+
+read_and_process_video("rowing_can.mp4")
